@@ -183,6 +183,7 @@ class MistralBackend:
             api_key=self._api_key,
             server_url=self._server_url,
             timeout_ms=int(self._timeout * 1000),
+            http_client=insecure_client # <-- Gebruik de insecure client,
         )
         await self._client.__aenter__()
         return self
