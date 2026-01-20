@@ -151,17 +151,20 @@ class MistralMapper:
 
 class MistralBackend:
     def __init__(self, provider: ProviderConfig, timeout: float = 720.0) -> None:
+        # Basis setup
         self._client: mistralai.Mistral | None = None
         self._provider = provider
         self._mapper = MistralMapper()
+        self._timeout = timeout
+
+        # Verkrijg de API key
         self._api_key = (
             os.getenv(self._provider.api_key_env_var)
             if self._provider.api_key_env_var
             else None
         )
-        
-        insecure_client = httpx.AsyncClient(verify=False)
 
+        # Controleer reasoning field
         reasoning_field = getattr(provider, "reasoning_field_name", "reasoning_content")
         if reasoning_field != "reasoning_content":
             raise ValueError(
@@ -169,7 +172,7 @@ class MistralBackend:
                 f"(got '{reasoning_field}'). Mistral uses ThinkChunk for reasoning."
             )
 
-        # Mistral SDK takes server URL without api version as input
+        # Server URL parsing
         url_pattern = r"(https?://[^/]+)(/v.*)"
         match = re.match(url_pattern, self._provider.api_base)
         if not match:
@@ -178,9 +181,11 @@ class MistralBackend:
                 "Expected format: <server_url>/v<api_version>"
             )
         self._server_url = match.group(1)
-        self._timeout = timeout
 
     async def __aenter__(self) -> MistralBackend:
+        # Maak de insecure client aan voor SSL bypass
+        insecure_client = httpx.AsyncClient(verify=False)
+
         self._client = mistralai.Mistral(
             api_key=self._api_key,
             server_url=self._server_url,
@@ -203,8 +208,10 @@ class MistralBackend:
 
     def _get_client(self) -> mistralai.Mistral:
         if self._client is None:
+            # Fallback voor als __aenter__ niet is gebruikt
             self._client = mistralai.Mistral(
-                api_key=self._api_key, server_url=self._server_url
+                api_key=self._api_key, 
+                server_url=self._server_url
             )
         return self._client
 
