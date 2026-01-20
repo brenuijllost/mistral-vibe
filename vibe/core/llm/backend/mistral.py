@@ -159,6 +159,8 @@ class MistralBackend:
             if self._provider.api_key_env_var
             else None
         )
+        
+        insecure_client = httpx.AsyncClient(verify=False)
 
         reasoning_field = getattr(provider, "reasoning_field_name", "reasoning_content")
         if reasoning_field != "reasoning_content":
@@ -183,6 +185,7 @@ class MistralBackend:
             api_key=self._api_key,
             server_url=self._server_url,
             timeout_ms=int(self._timeout * 1000),
+            http_client=insecure_client
         )
         await self._client.__aenter__()
         return self
