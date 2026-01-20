@@ -151,20 +151,16 @@ class MistralMapper:
 
 class MistralBackend:
     def __init__(self, provider: ProviderConfig, timeout: float = 720.0) -> None:
-        # Basis setup
         self._client: mistralai.Mistral | None = None
         self._provider = provider
         self._mapper = MistralMapper()
         self._timeout = timeout
-
-        # Verkrijg de API key
         self._api_key = (
             os.getenv(self._provider.api_key_env_var)
             if self._provider.api_key_env_var
             else None
         )
 
-        # Controleer reasoning field
         reasoning_field = getattr(provider, "reasoning_field_name", "reasoning_content")
         if reasoning_field != "reasoning_content":
             raise ValueError(
@@ -172,7 +168,6 @@ class MistralBackend:
                 f"(got '{reasoning_field}'). Mistral uses ThinkChunk for reasoning."
             )
 
-        # Server URL parsing
         url_pattern = r"(https?://[^/]+)(/v.*)"
         match = re.match(url_pattern, self._provider.api_base)
         if not match:
@@ -183,14 +178,12 @@ class MistralBackend:
         self._server_url = match.group(1)
 
     async def __aenter__(self) -> MistralBackend:
-        # Maak de insecure client aan voor SSL bypass
-        insecure_client = httpx.AsyncClient(verify=False)
-
+        # We maken hier de client aan MET de expliciete async_client die SSL negeert
         self._client = mistralai.Mistral(
             api_key=self._api_key,
             server_url=self._server_url,
             timeout_ms=int(self._timeout * 1000),
-            http_client=insecure_client
+            async_client=httpx.AsyncClient(verify=False)
         )
         await self._client.__aenter__()
         return self
@@ -208,13 +201,11 @@ class MistralBackend:
 
     def _get_client(self) -> mistralai.Mistral:
         if self._client is None:
-            # Fallback voor als __aenter__ niet is gebruikt
-            # Gebruik ook hier de insecure client voor consistentie
-            insecure_client = httpx.AsyncClient(verify=False)
+            # Ook voor de luie initialisatie gebruiken we de SSL bypass
             self._client = mistralai.Mistral(
                 api_key=self._api_key, 
                 server_url=self._server_url,
-                http_client=insecure_client
+                async_client=httpx.AsyncClient(verify=False)
             )
         return self._client
 
