@@ -209,9 +209,12 @@ class MistralBackend:
     def _get_client(self) -> mistralai.Mistral:
         if self._client is None:
             # Fallback voor als __aenter__ niet is gebruikt
+            # Gebruik ook hier de insecure client voor consistentie
+            insecure_client = httpx.AsyncClient(verify=False)
             self._client = mistralai.Mistral(
                 api_key=self._api_key, 
-                server_url=self._server_url
+                server_url=self._server_url,
+                http_client=insecure_client
             )
         return self._client
 
